@@ -1,0 +1,318 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout
+  title="Sequence Matcher - Quantum Walk"
+  description="Compare your own sequence of timestamps or intervals against the Quantum Walk to find the best alignment and similarity score."
+>
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">Sequence Matcher</h1>
+      <p class="text-xl text-star-white/80 max-w-3xl mx-auto">
+        Input your own sequence of timestamps or intervals and compare them
+        to the Quantum Walk to find the best alignment and similarity score.
+      </p>
+    </div>
+
+    <!-- Input Section -->
+    <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-purple/30 mb-8">
+      <h2 class="text-2xl font-semibold mb-6">Input Your Sequence</h2>
+
+      <!-- Input Type Selector -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-star-white/80 mb-3">Input Type</label>
+        <div class="flex gap-4">
+          <button
+            id="btn-intervals"
+            class="px-6 py-3 rounded-lg border-2 border-cosmic-purple bg-cosmic-purple/20 text-star-white font-medium transition-all hover:bg-cosmic-purple/30 hover:shadow-glow-purple cursor-pointer"
+          >
+            Intervals
+          </button>
+          <button
+            id="btn-timestamps"
+            class="px-6 py-3 rounded-lg border-2 border-cosmic-purple/20 bg-transparent text-star-white/60 hover:text-star-white hover:border-cosmic-purple/40 hover:bg-cosmic-purple/10 font-medium transition-all cursor-pointer"
+          >
+            Timestamps
+          </button>
+        </div>
+      </div>
+
+      <!-- Intervals Input -->
+      <div id="intervals-input" class="mb-6">
+        <label class="block text-sm font-medium text-star-white/80 mb-2">
+          Intervals (comma-separated)
+        </label>
+        <p class="text-xs text-star-white/60 mb-3">
+          Examples: "3d 14h 23m, 2.5d, 48h" or "3.5d, 2.1d, 6.8d"
+        </p>
+        <textarea
+          id="input-intervals"
+          rows="4"
+          class="w-full bg-cosmic-black/40 border border-cosmic-purple/30 rounded-lg p-4 text-star-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cosmic-purple focus:border-transparent"
+          placeholder="3d 14h 23m, 2.5d, 48h, 5d 6h"
+        ></textarea>
+      </div>
+
+      <!-- Timestamps Input -->
+      <div id="timestamps-input" class="mb-6 hidden">
+        <label class="block text-sm font-medium text-star-white/80 mb-2">
+          Timestamps (comma-separated)
+        </label>
+        <p class="text-xs text-star-white/60 mb-3">
+          Examples: ISO dates or Unix timestamps (in milliseconds). Try actual quantum steps for perfect match!
+        </p>
+        <textarea
+          id="input-timestamps"
+          rows="4"
+          class="w-full bg-cosmic-black/40 border border-cosmic-purple/30 rounded-lg p-4 text-star-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cosmic-purple focus:border-transparent"
+          placeholder="197337600000, 197745024000, 198217536000, 198635520000"
+        ></textarea>
+      </div>
+
+      <!-- Match Button -->
+      <button
+        id="btn-match"
+        class="w-full bg-cosmic-purple hover:bg-cosmic-purple/80 text-star-white font-semibold py-4 px-6 rounded-lg transition-all shadow-glow-purple hover:shadow-glow-purple-lg disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Find Best Match
+      </button>
+
+      <!-- Loading State -->
+      <div id="matching-loading" class="hidden text-center py-8">
+        <div class="inline-block w-12 h-12 border-4 border-cosmic-purple border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-star-white/60">Searching quantum sequence...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div id="error-message" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+        <p class="text-red-400" id="error-text"></p>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" class="hidden">
+      <!-- Similarity Score -->
+      <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-purple/30 mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-center">Match Results</h2>
+
+        <div class="text-center mb-8">
+          <div class="inline-block">
+            <div class="text-6xl font-bold mb-2" id="similarity-score">0%</div>
+            <div class="text-lg" id="match-quality">Loading...</div>
+            <p class="text-sm text-star-white/60 mt-2" id="match-description">Calculating...</p>
+          </div>
+        </div>
+
+        <!-- Statistics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Offset</div>
+            <div id="stat-offset" class="text-lg font-mono text-cosmic-blue">-</div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Correlation</div>
+            <div id="stat-correlation" class="text-lg font-mono text-cosmic-purple">-</div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Mean Error</div>
+            <div id="stat-mean-error" class="text-lg font-mono text-star-white">-</div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Max Error</div>
+            <div id="stat-max-error" class="text-lg font-mono text-star-white">-</div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">RMSE</div>
+            <div id="stat-rmse" class="text-lg font-mono text-star-white">-</div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Std Dev</div>
+            <div id="stat-std-dev" class="text-lg font-mono text-star-white">-</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Comparison -->
+      <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-blue/30">
+        <h3 class="text-xl font-semibold mb-6">Detailed Comparison</h3>
+        <div id="comparison-table" class="overflow-x-auto">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<script>
+  import { matchSequence, parseIntervalString, parseTimestampString } from '../utils/matching/sequenceMatcher';
+  import { getMatchQuality } from '../utils/matching/similarityScore';
+  import { formatDuration } from '../utils/quantum/durationConverter';
+  import type { UserSequenceInput } from '../types/matching';
+
+  let currentInputType: 'intervals' | 'timestamps' = 'intervals';
+
+  // UI Elements
+  const btnIntervals = document.getElementById('btn-intervals') as HTMLButtonElement;
+  const btnTimestamps = document.getElementById('btn-timestamps') as HTMLButtonElement;
+  const intervalsInput = document.getElementById('intervals-input');
+  const timestampsInput = document.getElementById('timestamps-input');
+  const btnMatch = document.getElementById('btn-match') as HTMLButtonElement;
+  const matchingLoading = document.getElementById('matching-loading');
+  const errorMessage = document.getElementById('error-message');
+  const errorText = document.getElementById('error-text');
+  const resultsSection = document.getElementById('results-section');
+
+  // Switch input type
+  btnIntervals?.addEventListener('click', () => {
+    currentInputType = 'intervals';
+    intervalsInput?.classList.remove('hidden');
+    timestampsInput?.classList.add('hidden');
+    btnIntervals.classList.add('bg-cosmic-purple/20', 'border-cosmic-purple');
+    btnIntervals.classList.remove('bg-transparent', 'border-cosmic-purple/20', 'text-star-white/60');
+    btnTimestamps?.classList.remove('bg-cosmic-purple/20', 'border-cosmic-purple');
+    btnTimestamps?.classList.add('bg-transparent', 'border-cosmic-purple/20', 'text-star-white/60');
+  });
+
+  btnTimestamps?.addEventListener('click', () => {
+    currentInputType = 'timestamps';
+    timestampsInput?.classList.remove('hidden');
+    intervalsInput?.classList.add('hidden');
+    btnTimestamps.classList.add('bg-cosmic-purple/20', 'border-cosmic-purple');
+    btnTimestamps.classList.remove('bg-transparent', 'border-cosmic-purple/20', 'text-star-white/60');
+    btnIntervals?.classList.remove('bg-cosmic-purple/20', 'border-cosmic-purple');
+    btnIntervals?.classList.add('bg-transparent', 'border-cosmic-purple/20', 'text-star-white/60');
+  });
+
+  // Match sequence
+  btnMatch?.addEventListener('click', async () => {
+    try {
+      // Hide previous results and errors
+      resultsSection?.classList.add('hidden');
+      errorMessage?.classList.add('hidden');
+
+      // Get input
+      const inputIntervals = (document.getElementById('input-intervals') as HTMLTextAreaElement)?.value.trim();
+      const inputTimestamps = (document.getElementById('input-timestamps') as HTMLTextAreaElement)?.value.trim();
+      const rawInput = currentInputType === 'intervals' ? inputIntervals : inputTimestamps;
+
+      if (!rawInput) {
+        throw new Error('Please enter a sequence to match');
+      }
+
+      // Show loading
+      matchingLoading?.classList.remove('hidden');
+      btnMatch.disabled = true;
+
+      // Parse input
+      let values: number[];
+      if (currentInputType === 'intervals') {
+        values = parseIntervalString(rawInput);
+      } else {
+        values = parseTimestampString(rawInput);
+      }
+
+      if (values.length === 0) {
+        throw new Error('Could not parse input. Please check the format.');
+      }
+
+      const userInput: UserSequenceInput = {
+        type: currentInputType,
+        values,
+      };
+
+      // Perform matching
+      const result = await matchSequence(userInput);
+
+      // Display results
+      displayResults(result);
+      resultsSection?.classList.remove('hidden');
+
+    } catch (error) {
+      console.error('Matching error:', error);
+      if (errorText) {
+        errorText.textContent = error instanceof Error ? error.message : 'An error occurred';
+      }
+      errorMessage?.classList.remove('hidden');
+    } finally {
+      matchingLoading?.classList.add('hidden');
+      btnMatch.disabled = false;
+    }
+  });
+
+  function displayResults(result: any) {
+    // Similarity score
+    const scoreEl = document.getElementById('similarity-score');
+    const qualityEl = document.getElementById('match-quality');
+    const descEl = document.getElementById('match-description');
+
+    if (scoreEl) {
+      const percentage = (result.similarityScore * 100).toFixed(1);
+      scoreEl.textContent = `${percentage}%`;
+    }
+
+    const quality = getMatchQuality(result.similarityScore);
+    if (qualityEl) {
+      qualityEl.textContent = quality.rating;
+      qualityEl.className = `text-lg ${quality.color}`;
+    }
+    if (descEl) {
+      descEl.textContent = quality.description;
+    }
+
+    // Statistics
+    const statOffset = document.getElementById('stat-offset');
+    const statCorr = document.getElementById('stat-correlation');
+    const statMean = document.getElementById('stat-mean-error');
+    const statMax = document.getElementById('stat-max-error');
+    const statRmse = document.getElementById('stat-rmse');
+    const statStd = document.getElementById('stat-std-dev');
+
+    if (statOffset) statOffset.textContent = `Step #${result.alignment.offset}`;
+    if (statCorr) statCorr.textContent = result.statistics.correlation.toFixed(3);
+    if (statMean) statMean.textContent = formatDuration(result.statistics.meanError);
+    if (statMax) statMax.textContent = formatDuration(result.statistics.maxError);
+    if (statRmse) statRmse.textContent = formatDuration(result.statistics.rmse);
+    if (statStd) statStd.textContent = formatDuration(result.statistics.stdDeviation);
+
+    // Comparison table
+    const tableContainer = document.getElementById('comparison-table');
+    if (tableContainer) {
+      let tableHTML = `
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-cosmic-purple/20">
+              <th class="text-left p-3 text-star-white/80">Index</th>
+              <th class="text-left p-3 text-star-white/80">Your Interval</th>
+              <th class="text-left p-3 text-star-white/80">Quantum Interval</th>
+              <th class="text-left p-3 text-star-white/80">Difference</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (let i = 0; i < result.userIntervals.length; i++) {
+        const userInt = result.userIntervals[i];
+        const quantInt = result.quantumIntervals[i];
+        const diff = Math.abs(userInt - quantInt);
+        const diffPercent = ((diff / Math.max(userInt, quantInt)) * 100).toFixed(1);
+
+        tableHTML += `
+          <tr class="border-b border-cosmic-purple/10 hover:bg-cosmic-purple/5">
+            <td class="p-3 font-mono text-cosmic-blue">${i}</td>
+            <td class="p-3 font-mono">${formatDuration(userInt)}</td>
+            <td class="p-3 font-mono">${formatDuration(quantInt)}</td>
+            <td class="p-3 font-mono text-star-white/60">${formatDuration(diff)} (${diffPercent}%)</td>
+          </tr>
+        `;
+      }
+
+      tableHTML += `
+          </tbody>
+        </table>
+      `;
+
+      tableContainer.innerHTML = tableHTML;
+    }
+  }
+</script>

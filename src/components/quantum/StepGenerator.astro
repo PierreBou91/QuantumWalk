@@ -1,0 +1,222 @@
+---
+// This component will be hydrated client-side for interactivity
+---
+
+<div id="step-generator" class="w-full">
+  <!-- Next Step Display -->
+  <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-purple/30 shadow-glow-purple">
+    <h2 class="text-2xl font-semibold mb-6 text-center">Next Quantum Step</h2>
+
+    <!-- Loading State -->
+    <div id="loading" class="text-center py-12">
+      <div class="inline-block w-12 h-12 border-4 border-cosmic-purple border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-star-white/60">Calculating quantum steps...</p>
+    </div>
+
+    <!-- Next Step Content -->
+    <div id="next-step-content" class="hidden">
+      <!-- Countdown Timer -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center space-x-2 sm:space-x-4 p-4 sm:p-6 bg-cosmic-purple/10 rounded-xl border border-cosmic-purple/20">
+          <div class="text-center">
+            <div id="countdown-days" class="text-2xl sm:text-4xl font-bold text-cosmic-purple">00</div>
+            <div class="text-xs text-star-white/60 mt-1">Days</div>
+          </div>
+          <div class="text-xl sm:text-3xl text-cosmic-purple/50">:</div>
+          <div class="text-center">
+            <div id="countdown-hours" class="text-2xl sm:text-4xl font-bold text-cosmic-purple">00</div>
+            <div class="text-xs text-star-white/60 mt-1">Hours</div>
+          </div>
+          <div class="text-xl sm:text-3xl text-cosmic-purple/50">:</div>
+          <div class="text-center">
+            <div id="countdown-minutes" class="text-2xl sm:text-4xl font-bold text-cosmic-purple">00</div>
+            <div class="text-xs text-star-white/60 mt-1">Min</div>
+          </div>
+          <div class="text-xl sm:text-3xl text-cosmic-purple/50">:</div>
+          <div class="text-center">
+            <div id="countdown-seconds" class="text-2xl sm:text-4xl font-bold text-cosmic-purple">00</div>
+            <div class="text-xs text-star-white/60 mt-1">Sec</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step Details -->
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">UTC Time</div>
+            <div id="step-utc" class="text-lg font-mono text-star-white"></div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Local Time</div>
+            <div id="step-local" class="text-lg font-mono text-star-white"></div>
+          </div>
+        </div>
+
+        <div class="bg-cosmic-black/40 rounded-lg p-4">
+          <div class="text-sm text-star-white/60 mb-1">Step Index</div>
+          <div id="step-index" class="text-lg font-mono text-cosmic-blue"></div>
+        </div>
+
+        <div class="bg-cosmic-black/40 rounded-lg p-4">
+          <div class="text-sm text-star-white/60 mb-1">Interval from Previous</div>
+          <div id="step-interval" class="text-lg font-mono text-cosmic-purple"></div>
+        </div>
+
+        <div class="bg-cosmic-black/40 rounded-lg p-4">
+          <div class="text-sm text-star-white/60 mb-1">Hash</div>
+          <div id="step-hash" class="text-sm font-mono text-star-white/80 break-all"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previous and Next Steps -->
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Previous Steps -->
+    <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-6 border border-cosmic-blue/30">
+      <h3 class="text-xl font-semibold mb-4 text-cosmic-blue">Previous Steps</h3>
+      <div id="previous-steps" class="space-y-2 max-h-96 overflow-y-auto">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Upcoming Steps -->
+    <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-6 border border-cosmic-purple/30">
+      <h3 class="text-xl font-semibold mb-4 text-cosmic-purple">Upcoming Steps</h3>
+      <div id="upcoming-steps" class="space-y-2 max-h-96 overflow-y-auto">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { getNextStep, calculateStepsForward } from '../../utils/quantum/stepCalculator';
+  import { formatDuration } from '../../utils/quantum/durationConverter';
+  import { getCurrentPreviousSteps, formatUTC } from '../../utils/quantum/stepNavigation';
+  import type { QuantumStep } from '../../types/quantum';
+
+  let nextStep: QuantumStep | null = null;
+  let countdownInterval: number | null = null;
+
+  async function loadSteps() {
+    try {
+      // Get the next step
+      nextStep = await getNextStep();
+
+      // Get previous 10 steps
+      const previousSteps = await getCurrentPreviousSteps(10);
+
+      // Get next 10 steps after the next step
+      const upcomingSteps = await calculateStepsForward(nextStep, 10);
+
+      // Update UI
+      displayNextStep();
+      displayPreviousSteps(previousSteps);
+      displayUpcomingSteps([nextStep, ...upcomingSteps]);
+
+      // Hide loading, show content
+      document.getElementById('loading')?.classList.add('hidden');
+      document.getElementById('next-step-content')?.classList.remove('hidden');
+
+      // Start countdown
+      startCountdown();
+    } catch (error) {
+      console.error('Error loading steps:', error);
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.innerHTML = '<p class="text-red-400">Error loading quantum steps. Please refresh the page.</p>';
+      }
+    }
+  }
+
+  function displayNextStep() {
+    if (!nextStep) return;
+
+    const utcEl = document.getElementById('step-utc');
+    const localEl = document.getElementById('step-local');
+    const indexEl = document.getElementById('step-index');
+    const intervalEl = document.getElementById('step-interval');
+    const hashEl = document.getElementById('step-hash');
+
+    if (utcEl) utcEl.textContent = formatUTC(nextStep.timestamp);
+    if (localEl) localEl.textContent = new Date(nextStep.timestamp).toLocaleString();
+    if (indexEl) indexEl.textContent = `#${nextStep.index}`;
+    if (intervalEl) intervalEl.textContent = formatDuration(nextStep.interval);
+    if (hashEl) hashEl.textContent = nextStep.hash;
+  }
+
+  function displayPreviousSteps(steps: QuantumStep[]) {
+    const container = document.getElementById('previous-steps');
+    if (!container) return;
+
+    container.innerHTML = steps.map(step => `
+      <div class="bg-cosmic-black/40 rounded-lg p-3 border border-cosmic-blue/10 hover:border-cosmic-blue/30 transition-colors">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-mono text-cosmic-blue">#${step.index}</span>
+          <span class="text-xs text-star-white/60">${formatDuration(step.interval)}</span>
+        </div>
+        <div class="text-xs text-star-white/80 mt-1 font-mono">${new Date(step.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+
+  function displayUpcomingSteps(steps: QuantumStep[]) {
+    const container = document.getElementById('upcoming-steps');
+    if (!container) return;
+
+    container.innerHTML = steps.slice(0, 10).map(step => `
+      <div class="bg-cosmic-black/40 rounded-lg p-3 border border-cosmic-purple/10 hover:border-cosmic-purple/30 transition-colors">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-mono text-cosmic-purple">#${step.index}</span>
+          <span class="text-xs text-star-white/60">${formatDuration(step.interval)}</span>
+        </div>
+        <div class="text-xs text-star-white/80 mt-1 font-mono">${new Date(step.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+
+  function updateCountdown() {
+    if (!nextStep) return;
+
+    const now = Date.now();
+    const diff = nextStep.timestamp - now;
+
+    if (diff <= 0) {
+      // Next step has occurred, reload
+      loadSteps();
+      return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const daysEl = document.getElementById('countdown-days');
+    const hoursEl = document.getElementById('countdown-hours');
+    const minutesEl = document.getElementById('countdown-minutes');
+    const secondsEl = document.getElementById('countdown-seconds');
+
+    if (daysEl) daysEl.textContent = days.toString().padStart(2, '0');
+    if (hoursEl) hoursEl.textContent = hours.toString().padStart(2, '0');
+    if (minutesEl) minutesEl.textContent = minutes.toString().padStart(2, '0');
+    if (secondsEl) secondsEl.textContent = seconds.toString().padStart(2, '0');
+  }
+
+  function startCountdown() {
+    updateCountdown();
+    countdownInterval = window.setInterval(updateCountdown, 1000);
+  }
+
+  // Initialize on load
+  loadSteps();
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+    }
+  });
+</script>

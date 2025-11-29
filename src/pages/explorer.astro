@@ -1,0 +1,447 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout
+  title="Step Explorer - Quantum Walk"
+  description="Explore quantum steps by index and browse the surrounding sequence."
+>
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">Step Explorer</h1>
+      <p class="text-xl text-star-white/80 max-w-3xl mx-auto">
+        Navigate through the quantum walk sequence by step index.
+        View any step and its surrounding context.
+      </p>
+    </div>
+
+    <!-- Navigation Input -->
+    <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-purple/30 mb-8">
+      <div class="max-w-2xl mx-auto">
+        <label class="block text-lg font-semibold text-star-white mb-3">
+          Jump to Step Index
+        </label>
+        <div class="flex gap-4">
+          <input
+            type="number"
+            id="step-index-input"
+            min="0"
+            placeholder="Enter step index (e.g., 100)"
+            class="flex-1 bg-cosmic-black/40 border border-cosmic-purple/30 rounded-lg px-4 py-3 text-star-white font-mono focus:outline-none focus:ring-2 focus:ring-cosmic-purple focus:border-transparent"
+          />
+          <button
+            id="btn-goto"
+            class="px-8 py-3 bg-cosmic-purple hover:bg-cosmic-purple/80 text-star-white font-semibold rounded-lg transition-all shadow-glow-purple hover:shadow-glow-purple-lg"
+          >
+            Go
+          </button>
+        </div>
+        <p class="text-sm text-star-white/60 mt-2">
+          Or use quick navigation: Step 0 (Epoch), Step 100, Step 1000, etc.
+        </p>
+        <div class="flex gap-2 mt-3 flex-wrap">
+          <button class="quick-nav px-3 py-1 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/40 text-cosmic-blue rounded text-sm transition-all" data-index="0">Step 0</button>
+          <button class="quick-nav px-3 py-1 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/40 text-cosmic-blue rounded text-sm transition-all" data-index="10">Step 10</button>
+          <button class="quick-nav px-3 py-1 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/40 text-cosmic-blue rounded text-sm transition-all" data-index="100">Step 100</button>
+          <button class="quick-nav px-3 py-1 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/40 text-cosmic-blue rounded text-sm transition-all" data-index="1000">Step 1000</button>
+          <button class="quick-nav px-3 py-1 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/40 text-cosmic-blue rounded text-sm transition-all" data-index="5000">Step 5000</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Section -->
+    <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-cosmic-blue/30 mb-8">
+      <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Export Steps</h2>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-star-white/80 mb-2">From Step Index</label>
+            <input
+              type="number"
+              id="export-from"
+              min="0"
+              value="0"
+              class="w-full bg-cosmic-black/40 border border-cosmic-blue/30 rounded-lg px-4 py-2 text-star-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cosmic-blue focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-star-white/80 mb-2">To Step Index</label>
+            <input
+              type="number"
+              id="export-to"
+              min="0"
+              value="100"
+              class="w-full bg-cosmic-black/40 border border-cosmic-blue/30 rounded-lg px-4 py-2 text-star-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cosmic-blue focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button
+            id="btn-export-json"
+            class="flex-1 px-6 py-3 bg-cosmic-blue/20 hover:bg-cosmic-blue/30 border border-cosmic-blue/50 text-cosmic-blue font-semibold rounded-lg transition-all hover:shadow-glow-blue cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export as JSON
+          </button>
+          <button
+            id="btn-export-csv"
+            class="flex-1 px-6 py-3 bg-cosmic-purple/20 hover:bg-cosmic-purple/30 border border-cosmic-purple/50 text-cosmic-purple font-semibold rounded-lg transition-all hover:shadow-glow-purple cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export as CSV
+          </button>
+        </div>
+
+        <!-- Export Loading State -->
+        <div id="export-loading" class="hidden text-center py-4">
+          <div class="inline-block w-8 h-8 border-4 border-cosmic-blue border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-2 text-sm text-star-white/60">Calculating and exporting steps...</p>
+        </div>
+
+        <p class="text-xs text-star-white/60">
+          Note: Large ranges (>1000 steps) may take a moment to calculate.
+        </p>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="explorer-loading" class="hidden text-center py-12">
+      <div class="inline-block w-12 h-12 border-4 border-cosmic-purple border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-star-white/60">Calculating quantum steps...</p>
+    </div>
+
+    <!-- Target Step Display -->
+    <div id="target-step-display" class="hidden">
+      <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-8 border border-cosmic-purple/30 shadow-glow-purple mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-center">Target Step</h2>
+        <div class="space-y-4">
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Step Index</div>
+            <div id="target-index" class="text-2xl font-mono text-cosmic-purple"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-cosmic-black/40 rounded-lg p-4">
+              <div class="text-sm text-star-white/60 mb-1">UTC Time</div>
+              <div id="target-utc" class="text-base font-mono text-star-white"></div>
+            </div>
+            <div class="bg-cosmic-black/40 rounded-lg p-4">
+              <div class="text-sm text-star-white/60 mb-1">Local Time</div>
+              <div id="target-local" class="text-base font-mono text-star-white"></div>
+            </div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Interval from Previous</div>
+            <div id="target-interval" class="text-lg font-mono text-cosmic-blue"></div>
+          </div>
+          <div class="bg-cosmic-black/40 rounded-lg p-4">
+            <div class="text-sm text-star-white/60 mb-1">Hash</div>
+            <div id="target-hash" class="text-sm font-mono text-star-white/80 break-all"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Surrounding Steps -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Previous Steps -->
+        <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-6 border border-cosmic-blue/30">
+          <h3 class="text-xl font-semibold mb-4 text-cosmic-blue">Previous 10 Steps</h3>
+          <div id="previous-steps-explorer" class="space-y-2 max-h-96 overflow-y-auto">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="bg-cosmic-black/60 backdrop-blur-sm rounded-2xl p-6 border border-cosmic-purple/30">
+          <h3 class="text-xl font-semibold mb-4 text-cosmic-purple">Next 10 Steps</h3>
+          <div id="next-steps-explorer" class="space-y-2 max-h-96 overflow-y-auto">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<script>
+  import { getInitialStep, calculateNextStep } from '../utils/quantum/stepCalculator';
+  import { formatDuration } from '../utils/quantum/durationConverter';
+  import { formatUTC } from '../utils/quantum/stepNavigation';
+  import { exportStepsToJSON, downloadJSON } from '../utils/export/jsonExporter';
+  import { exportStepsToCSV, downloadCSV } from '../utils/export/csvExporter';
+  import type { QuantumStep } from '../types/quantum';
+
+  const stepIndexInput = document.getElementById('step-index-input') as HTMLInputElement;
+  const btnGoto = document.getElementById('btn-goto');
+  const loading = document.getElementById('explorer-loading');
+  const targetDisplay = document.getElementById('target-step-display');
+  const quickNavButtons = document.querySelectorAll('.quick-nav');
+
+  async function loadStep(targetIndex: number) {
+    try {
+      // Show loading
+      loading?.classList.remove('hidden');
+      targetDisplay?.classList.add('hidden');
+
+      // Calculate steps up to target index
+      let current = await getInitialStep();
+
+      // Only store last 11 steps to save memory on mobile
+      const recentSteps: QuantumStep[] = [current];
+      const maxRecentSteps = 11;
+
+      for (let i = 0; i < targetIndex; i++) {
+        current = await calculateNextStep(current);
+        recentSteps.push(current);
+
+        // Keep only the last 11 steps in memory
+        if (recentSteps.length > maxRecentSteps) {
+          recentSteps.shift();
+        }
+      }
+
+      const targetStep = current;
+
+      // Get previous 10 steps (all except the last one, which is the target)
+      const previousSteps = recentSteps.slice(0, recentSteps.length - 1).reverse();
+
+      // Calculate next 10 steps
+      const nextSteps: QuantumStep[] = [];
+      let next = targetStep;
+      for (let i = 0; i < 10; i++) {
+        next = await calculateNextStep(next);
+        nextSteps.push(next);
+      }
+
+      // Display target step
+      displayTargetStep(targetStep);
+      displayPreviousSteps(previousSteps);
+      displayNextSteps(nextSteps);
+
+      // Show result
+      loading?.classList.add('hidden');
+      targetDisplay?.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading step:', error);
+      if (loading) {
+        loading.innerHTML = '<p class="text-red-400">Error loading step. Please try again.</p>';
+      }
+    }
+  }
+
+  function displayTargetStep(step: QuantumStep) {
+    const indexEl = document.getElementById('target-index');
+    const utcEl = document.getElementById('target-utc');
+    const localEl = document.getElementById('target-local');
+    const intervalEl = document.getElementById('target-interval');
+    const hashEl = document.getElementById('target-hash');
+
+    if (indexEl) indexEl.textContent = `#${step.index}`;
+    if (utcEl) utcEl.textContent = formatUTC(step.timestamp);
+    if (localEl) localEl.textContent = new Date(step.timestamp).toLocaleString();
+    if (intervalEl) intervalEl.textContent = formatDuration(step.interval);
+    if (hashEl) hashEl.textContent = step.hash;
+  }
+
+  function displayPreviousSteps(steps: QuantumStep[]) {
+    const container = document.getElementById('previous-steps-explorer');
+    if (!container) return;
+
+    container.innerHTML = steps.map(step => `
+      <div class="bg-cosmic-black/40 rounded-lg p-3 border border-cosmic-blue/10 hover:border-cosmic-blue/30 transition-colors cursor-pointer" data-index="${step.index}">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-mono text-cosmic-blue">#${step.index}</span>
+          <span class="text-xs text-star-white/60">${formatDuration(step.interval)}</span>
+        </div>
+        <div class="text-xs text-star-white/80 mt-1 font-mono">${new Date(step.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+
+    // Add click handlers
+    container.querySelectorAll('[data-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        const index = parseInt((el as HTMLElement).dataset.index || '0');
+        stepIndexInput.value = index.toString();
+        loadStep(index);
+      });
+    });
+  }
+
+  function displayNextSteps(steps: QuantumStep[]) {
+    const container = document.getElementById('next-steps-explorer');
+    if (!container) return;
+
+    container.innerHTML = steps.map(step => `
+      <div class="bg-cosmic-black/40 rounded-lg p-3 border border-cosmic-purple/10 hover:border-cosmic-purple/30 transition-colors cursor-pointer" data-index="${step.index}">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-mono text-cosmic-purple">#${step.index}</span>
+          <span class="text-xs text-star-white/60">${formatDuration(step.interval)}</span>
+        </div>
+        <div class="text-xs text-star-white/80 mt-1 font-mono">${new Date(step.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+
+    // Add click handlers
+    container.querySelectorAll('[data-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        const index = parseInt((el as HTMLElement).dataset.index || '0');
+        stepIndexInput.value = index.toString();
+        loadStep(index);
+      });
+    });
+  }
+
+  // Event listeners
+  btnGoto?.addEventListener('click', () => {
+    const index = parseInt(stepIndexInput.value || '0');
+    if (index >= 0) {
+      loadStep(index);
+    }
+  });
+
+  stepIndexInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const index = parseInt(stepIndexInput.value || '0');
+      if (index >= 0) {
+        loadStep(index);
+      }
+    }
+  });
+
+  quickNavButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = parseInt((btn as HTMLElement).dataset.index || '0');
+      stepIndexInput.value = index.toString();
+      loadStep(index);
+    });
+  });
+
+  // Export functionality
+  const btnExportJson = document.getElementById('btn-export-json');
+  const btnExportCsv = document.getElementById('btn-export-csv');
+  const exportFromInput = document.getElementById('export-from') as HTMLInputElement;
+  const exportToInput = document.getElementById('export-to') as HTMLInputElement;
+  const exportLoading = document.getElementById('export-loading');
+
+  async function calculateStepsInRange(fromIndex: number, toIndex: number): Promise<QuantumStep[]> {
+    const steps: QuantumStep[] = [];
+    let current = await getInitialStep();
+
+    // If starting from index 0, include it
+    if (fromIndex === 0) {
+      steps.push(current);
+    }
+
+    // Calculate up to toIndex
+    for (let i = 0; i < toIndex; i++) {
+      current = await calculateNextStep(current);
+      // Only collect steps in our range
+      if (i >= fromIndex) {
+        steps.push(current);
+      }
+    }
+
+    return steps;
+  }
+
+  btnExportJson?.addEventListener('click', async () => {
+    try {
+      const fromIndex = parseInt(exportFromInput.value || '0');
+      const toIndex = parseInt(exportToInput.value || '100');
+
+      if (fromIndex < 0 || toIndex < 0) {
+        alert('Please enter valid step indices (>= 0)');
+        return;
+      }
+
+      if (fromIndex > toIndex) {
+        alert('From index must be less than or equal to To index');
+        return;
+      }
+
+      if (toIndex - fromIndex > 10000) {
+        const confirm = window.confirm('You are about to export more than 10,000 steps. This may take a while. Continue?');
+        if (!confirm) return;
+      }
+
+      // Show loading
+      exportLoading?.classList.remove('hidden');
+      btnExportJson?.setAttribute('disabled', 'true');
+      btnExportCsv?.setAttribute('disabled', 'true');
+
+      // Calculate steps
+      const steps = await calculateStepsInRange(fromIndex, toIndex);
+
+      // Export to JSON
+      const jsonData = exportStepsToJSON(steps, {
+        rangeStart: fromIndex,
+        rangeEnd: toIndex,
+      });
+
+      // Download
+      const filename = `quantum-walk-steps-${fromIndex}-${toIndex}.json`;
+      downloadJSON(jsonData, filename);
+
+      // Hide loading
+      exportLoading?.classList.add('hidden');
+      btnExportJson?.removeAttribute('disabled');
+      btnExportCsv?.removeAttribute('disabled');
+    } catch (error) {
+      console.error('Error exporting JSON:', error);
+      alert('Error exporting steps. Please try a smaller range.');
+      exportLoading?.classList.add('hidden');
+      btnExportJson?.removeAttribute('disabled');
+      btnExportCsv?.removeAttribute('disabled');
+    }
+  });
+
+  btnExportCsv?.addEventListener('click', async () => {
+    try {
+      const fromIndex = parseInt(exportFromInput.value || '0');
+      const toIndex = parseInt(exportToInput.value || '100');
+
+      if (fromIndex < 0 || toIndex < 0) {
+        alert('Please enter valid step indices (>= 0)');
+        return;
+      }
+
+      if (fromIndex > toIndex) {
+        alert('From index must be less than or equal to To index');
+        return;
+      }
+
+      if (toIndex - fromIndex > 10000) {
+        const confirm = window.confirm('You are about to export more than 10,000 steps. This may take a while. Continue?');
+        if (!confirm) return;
+      }
+
+      // Show loading
+      exportLoading?.classList.remove('hidden');
+      btnExportJson?.setAttribute('disabled', 'true');
+      btnExportCsv?.setAttribute('disabled', 'true');
+
+      // Calculate steps
+      const steps = await calculateStepsInRange(fromIndex, toIndex);
+
+      // Export to CSV
+      const csvData = exportStepsToCSV(steps);
+
+      // Download
+      const filename = `quantum-walk-steps-${fromIndex}-${toIndex}.csv`;
+      downloadCSV(csvData, filename);
+
+      // Hide loading
+      exportLoading?.classList.add('hidden');
+      btnExportJson?.removeAttribute('disabled');
+      btnExportCsv?.removeAttribute('disabled');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Error exporting steps. Please try a smaller range.');
+      exportLoading?.classList.add('hidden');
+      btnExportJson?.removeAttribute('disabled');
+      btnExportCsv?.removeAttribute('disabled');
+    }
+  });
+
+  // Load step 0 by default
+  loadStep(0);
+</script>
