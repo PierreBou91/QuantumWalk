@@ -31,7 +31,7 @@ import MainLayout from '../layouts/MainLayout.astro';
           />
           <button
             id="btn-goto"
-            class="px-8 py-3 bg-cosmic-purple hover:bg-cosmic-purple/80 text-star-white font-semibold rounded-lg transition-all shadow-glow-purple hover:shadow-glow-purple-lg"
+            class="px-4 sm:px-6 md:px-8 py-3 bg-cosmic-purple hover:bg-cosmic-purple/80 text-star-white font-semibold rounded-lg transition-all shadow-glow-purple hover:shadow-glow-purple-lg min-w-[60px]"
           >
             Go
           </button>
@@ -168,6 +168,7 @@ import MainLayout from '../layouts/MainLayout.astro';
   import { formatUTC } from '../utils/quantum/stepNavigation';
   import { exportStepsToJSON, downloadJSON } from '../utils/export/jsonExporter';
   import { exportStepsToCSV, downloadCSV } from '../utils/export/csvExporter';
+  import { validateExportRange, ExportButtonManager } from '../utils/validation/exportValidation';
   import type { QuantumStep } from '../types/quantum';
 
   const stepIndexInput = document.getElementById('step-index-input') as HTMLInputElement;
@@ -344,83 +345,73 @@ import MainLayout from '../layouts/MainLayout.astro';
   }
 
   btnExportJson?.addEventListener('click', async () => {
+    const validation = validateExportRange(
+      exportFromInput.value,
+      exportToInput.value
+    );
+
+    if (!validation.isValid) {
+      if (validation.error) {
+        alert(validation.error);
+      }
+      return;
+    }
+
+    const { fromIndex, toIndex } = validation;
+    const buttonManager = new ExportButtonManager(
+      btnExportJson,
+      btnExportCsv,
+      exportLoading
+    );
+
     try {
-      const fromIndex = parseInt(exportFromInput.value || '0');
-      const toIndex = parseInt(exportToInput.value || '100');
-
-      if (fromIndex < 0 || toIndex < 0) {
-        alert('Please enter valid step indices (>= 0)');
-        return;
-      }
-
-      if (fromIndex > toIndex) {
-        alert('From index must be less than or equal to To index');
-        return;
-      }
-
-      if (toIndex - fromIndex > 10000) {
-        const confirm = window.confirm('You are about to export more than 10,000 steps. This may take a while. Continue?');
-        if (!confirm) return;
-      }
-
-      // Show loading
-      exportLoading?.classList.remove('hidden');
-      btnExportJson?.setAttribute('disabled', 'true');
-      btnExportCsv?.setAttribute('disabled', 'true');
+      buttonManager.showLoading();
 
       // Calculate steps
-      const steps = await calculateStepsInRange(fromIndex, toIndex);
+      const steps = await calculateStepsInRange(fromIndex!, toIndex!);
 
       // Export to JSON
       const jsonData = exportStepsToJSON(steps, {
-        rangeStart: fromIndex,
-        rangeEnd: toIndex,
+        rangeStart: fromIndex!,
+        rangeEnd: toIndex!,
       });
 
       // Download
       const filename = `quantum-walk-steps-${fromIndex}-${toIndex}.json`;
       downloadJSON(jsonData, filename);
-
-      // Hide loading
-      exportLoading?.classList.add('hidden');
-      btnExportJson?.removeAttribute('disabled');
-      btnExportCsv?.removeAttribute('disabled');
     } catch (error) {
       console.error('Error exporting JSON:', error);
       alert('Error exporting steps. Please try a smaller range.');
-      exportLoading?.classList.add('hidden');
-      btnExportJson?.removeAttribute('disabled');
-      btnExportCsv?.removeAttribute('disabled');
+    } finally {
+      buttonManager.hideLoading();
     }
   });
 
   btnExportCsv?.addEventListener('click', async () => {
+    const validation = validateExportRange(
+      exportFromInput.value,
+      exportToInput.value
+    );
+
+    if (!validation.isValid) {
+      if (validation.error) {
+        alert(validation.error);
+      }
+      return;
+    }
+
+    const { fromIndex, toIndex } = validation;
+    const buttonManager = new ExportButtonManager(
+      btnExportJson,
+      btnExportCsv,
+      exportLoading
+    );
+
     try {
-      const fromIndex = parseInt(exportFromInput.value || '0');
-      const toIndex = parseInt(exportToInput.value || '100');
-
-      if (fromIndex < 0 || toIndex < 0) {
-        alert('Please enter valid step indices (>= 0)');
-        return;
-      }
-
-      if (fromIndex > toIndex) {
-        alert('From index must be less than or equal to To index');
-        return;
-      }
-
-      if (toIndex - fromIndex > 10000) {
-        const confirm = window.confirm('You are about to export more than 10,000 steps. This may take a while. Continue?');
-        if (!confirm) return;
-      }
-
-      // Show loading
-      exportLoading?.classList.remove('hidden');
-      btnExportJson?.setAttribute('disabled', 'true');
-      btnExportCsv?.setAttribute('disabled', 'true');
+      buttonManager.showLoading();
 
       // Calculate steps
-      const steps = await calculateStepsInRange(fromIndex, toIndex);
+      const steps = await calculateStepsInRange(fromIndex!, toIndex!);
 
       // Export to CSV
       const csvData = exportStepsToCSV(steps);
@@ -428,17 +419,11 @@ import MainLayout from '../layouts/MainLayout.astro';
       // Download
       const filename = `quantum-walk-steps-${fromIndex}-${toIndex}.csv`;
       downloadCSV(csvData, filename);
-
-      // Hide loading
-      exportLoading?.classList.add('hidden');
-      btnExportJson?.removeAttribute('disabled');
-      btnExportCsv?.removeAttribute('disabled');
     } catch (error) {
       console.error('Error exporting CSV:', error);
       alert('Error exporting steps. Please try a smaller range.');
-      exportLoading?.classList.add('hidden');
-      btnExportJson?.removeAttribute('disabled');
-      btnExportCsv?.removeAttribute('disabled');
+    } finally {
+      buttonManager.hideLoading();
     }
   });
 

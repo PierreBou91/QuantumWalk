@@ -195,7 +195,7 @@ The site is optimized for Netlify with automatic builds and CDN distribution.
 ## Inspiration
 
 - [Veritasium - Many Worlds Video](https://www.youtube.com/watch?v=kTXTPe3wahc)
-- *Something Deeply Hidden* by Sean M. Carroll
+- [*Something Deeply Hidden*](https://www.preposterousuniverse.com/somethingdeeplyhidden/) by Sean M. Carroll
 
 ## License
 
